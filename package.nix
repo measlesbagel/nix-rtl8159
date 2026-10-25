@@ -6,7 +6,7 @@
 stdenvNoCC.mkDerivation {
   pname = "rtl8159-firmware";
   # The Realtek r8152 release ./r8152.c is; pack.py refuses any other.
-  version = "2.21.4";
+  version = "2.22.1";
 
   src = lib.fileset.toSource {
     root = ./.;

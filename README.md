@@ -12,7 +12,7 @@ skipping the load when the PHY already runs that version or newer.
 
 ```nix
 # flake.nix
-inputs.nix-rtl8159.url = "github:measlesbagel/nix-rtl8159/v2.21.4-1";
+inputs.nix-rtl8159.url = "github:measlesbagel/nix-rtl8159/v2.22.1-1";
 inputs.nix-rtl8159.inputs.nixpkgs.follows = "nixpkgs";
 
 # the host's configuration
@@ -25,7 +25,7 @@ the module asserts it. The firmware alone is `packages.<system>.default`, or
 `rtl8159-firmware` from `overlays.default`.
 
 After a replug, `ethtool -i <iface>` shows the loaded file as
-`firmware-version: rtl8159-1 v2.21.4 2025/10/28`, and `ethtool <iface>` shows
+`firmware-version: rtl8159-1 v2.22.1 2026/06/03`, and `ethtool <iface>` shows
 `Speed: 10000Mb/s` on a 10G link.
 
 ## How it is built
