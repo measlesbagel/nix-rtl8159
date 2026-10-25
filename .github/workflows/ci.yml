@@ -36,6 +36,8 @@ jobs:
       - uses: zizmorcore/zizmor-action@85b2b9fb8e3325e7a23d7d0a9d7ba5ae0f999e3e # v0.7.1
         with:
           persona: pedantic
+          # Uploading SARIF needs security-events: write; fail in the log instead.
+          advanced-security: false
 
   flake-check:
     name: Flake check
