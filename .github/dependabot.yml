@@ -1,0 +1,24 @@
+version: 2
+updates:
+  # No cooldown:
+  # Dependabot can only lock an input's newest commit, and nixos-unstable's
+  # is rarely a week old, so one would stall nixpkgs.
+  - package-ecosystem: nix # zizmor: ignore[dependabot-cooldown]
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ["*"]
