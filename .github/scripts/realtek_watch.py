@@ -17,6 +17,9 @@ LISTING_URL = "https://www.realtek.com/Download/ListAllDownloadItem?cate_id=585"
 DOWNLOAD_PAGE = "https://www.realtek.com/Download/List?cate_id=585"
 USER_AGENT = "nix-rtl8159-release-watch (+https://github.com/measlesbagel/nix-rtl8159)"
 MARKER = "<!-- realtek-watch -->"
+# gh prints bot logins as app/<slug>; the REST API says <slug>[bot]. The repo is public, so
+# only issues from the Actions bot are ours to edit or to trust as the alert.
+BOT_LOGINS = frozenset({"app/github-actions", "github-actions[bot]"})
 
 VERSION = re.compile(r"\d+(?:\.\d+)+")
 TARBALL = re.compile(r"r8152-v(\d+(?:\.\d+)+)\.tar\.\w+")
@@ -46,6 +49,7 @@ class Issue:
     number: int
     title: str
     body: str
+    author: str
 
 
 @dataclass(frozen=True)
@@ -84,6 +88,10 @@ def fetch_listing() -> dict:
 
 
 def latest_release(listing: dict) -> Release:
+    if not isinstance(listing, dict):
+        raise SystemExit(
+            f"error: Realtek listing changed shape: expected a JSON object, got {type(listing).__name__}"
+        )
     if listing.get("Pass") is not True:
         raise SystemExit(f"error: Realtek listing reports Pass={listing.get('Pass')!r}")
     found = []
@@ -139,11 +147,18 @@ def gh(*args: str, stdin: str | None = None) -> str:
 
 
 def open_issues() -> list[Issue]:
-    fields = "number,title,body"
+    # --author app/github-actions also matches other bots in gh 2.102; plan() checks the login.
     rows = json.loads(
-        gh("issue", "list", "--state", "open", "--limit", "100", "--json", fields)
+        gh(
+            "issue", "list", "--state", "open", "--limit", "100",
+            "--author", "github-actions[bot]",
+            "--json", "number,title,body,author",
+        )
     )
-    return [Issue(row["number"], row["title"], row["body"] or "") for row in rows]
+    return [
+        Issue(row["number"], row["title"], row["body"] or "", row["author"]["login"])
+        for row in rows
+    ]
 
 
 def write_issue(command: list[str], title: str, body: str) -> str:
@@ -166,7 +181,14 @@ def render(latest: Release, known: Known) -> tuple[str, str]:
 
 def plan(latest: Release, known: Known, issues: list[Issue]) -> Action:
     title, body = render(latest, known)
-    existing = next((issue for issue in issues if MARKER in issue.body), None)
+    existing = next(
+        (
+            issue
+            for issue in issues
+            if issue.author in BOT_LOGINS and MARKER in issue.body
+        ),
+        None,
+    )
     if existing is None:
         return Create(title, body)
     if (existing.title, existing.body) == (title, body):
@@ -219,6 +241,8 @@ def main() -> None:
     )
 
     if args.known_version:
+        if args.apply:
+            raise SystemExit("error: --known-version is for dry runs; drop --apply")
         if not VERSION.fullmatch(args.known_version):
             raise SystemExit(
                 f"error: --known-version {args.known_version!r} is not X.Y.Z"
@@ -228,7 +252,12 @@ def main() -> None:
         known = newest_tag()
     print(f"known:   {known.label}")
 
-    if key(latest.version) <= key(known.version):
+    if key(latest.version) < key(known.version):
+        raise SystemExit(
+            f"error: Realtek lists {latest.version}, older than {known.version}; "
+            "the listing is stale or changed"
+        )
+    if key(latest.version) == key(known.version):
         print("up to date")
         return
     print(f"newer:   {latest.version} > {known.version}")
