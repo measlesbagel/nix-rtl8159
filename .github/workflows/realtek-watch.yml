@@ -1,0 +1,58 @@
+name: realtek-watch
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: File or update the issue; unchecked only prints it
+        type: boolean
+        default: false
+      known_version:
+        description: Pretend this is the newest released version, to exercise the issue path
+        type: string
+        default: ""
+  # workflow_dispatch is unavailable until this file is on the default branch, so a PR
+  # gets the dry runs below.
+  pull_request:
+    paths:
+      - .github/workflows/realtek-watch.yml
+      - .github/scripts/realtek_watch.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: realtek-watch-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    name: Watch Realtek
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write # files and edits the new-release issue
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-tags: true
+          persist-credentials: false
+      - name: Check for a newer release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          APPLY: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.apply) }}
+          KNOWN_VERSION: ${{ inputs.known_version }}
+        run: |
+          args=()
+          if [ "$APPLY" = true ]; then args+=(--apply); fi
+          if [ -n "$KNOWN_VERSION" ]; then args+=(--known-version "$KNOWN_VERSION"); fi
+          python3 -I .github/scripts/realtek_watch.py "${args[@]}"
+      - name: Dry run with a forced newer version
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: python3 -I .github/scripts/realtek_watch.py --known-version 0.0.1
