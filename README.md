@@ -43,7 +43,11 @@ for driver 2.21.4 byte for byte.
 
 ## Updating
 
-Realtek's download page sits behind a CAPTCHA, so updates are manual:
+Realtek's download page sits behind a CAPTCHA, so updates are manual. The
+`realtek-watch` workflow checks Realtek's listing weekly and opens an issue
+when it lists a release newer than the newest tag. GitHub disables scheduled
+workflows in a public repository after 60 days without activity, so if the
+watcher goes quiet, re-enable it in the repository's Actions tab:
 
 1. Replace `r8152.c` with the one from Realtek's newest r8152 tarball.
 2. Set `version` in `package.nix` to that release; the build fails if they
